@@ -1,5 +1,10 @@
 // Written by sigroot
 
+use std::io::{Error, ErrorKind};
+use std::result::Result;
+
+const VERSION_STATEMENT: &str = "Sig FW LED Matrix Firmware version 1.0";
+
 pub fn get_ports() -> Option<Vec<serialport::SerialPortInfo>> {
     let mut ports = match serialport::available_ports(){
         Ok(x) => x,
@@ -20,13 +25,51 @@ pub fn get_ports() -> Option<Vec<serialport::SerialPortInfo>> {
     }
 }
 
+pub fn get_matrix_port(baud_rate: u32) -> Result<Box<dyn serialport::SerialPort>, Error> {
+    let ports = get_ports();
+    let port_info;
+    match ports {
+        Some(x) => {
+            if x.len() == 1 {
+                port_info = x[0].clone();
+            } else {
+                return Err(Error::new(ErrorKind::InvalidInput, "Too many ports found!"));
+            }
+        },
+        None => return Err(Error::new(ErrorKind::NotFound, "No ACM or Com ports found!")),
+    }
+    
+    print!("{:?} ", port_info.port_name);
+    println!("Test 1");
+    let mut port = serialport::new(port_info.port_name, baud_rate).open()?;
+    println!("Test 2");
+    port.write(&[127])?;
+
+    println!("Test 3");
+    let mut read_buffer: Vec<u8> = vec![0; 32];
+    port.read(&mut read_buffer)?;
+    println!("Test 4");
+    match std::str::from_utf8(&read_buffer) {
+        Ok(x) => {
+            if x == VERSION_STATEMENT {
+                return Ok(port);
+            } else {
+                return Err(Error::new(ErrorKind::InvalidInput, "Incorrect version statement from port!"));
+            }
+        }
+        Err(_) => {
+            return Err(Error::new(ErrorKind::InvalidInput, "Incorrect string format from port!"));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn ports_available() {
-        let ports = get_matrix_ports().expect("No ACM or COM ports found");
+        let ports = get_ports().expect("No ACM or COM ports found!");
         for p in ports {
             let mut vid = 0;
             let mut pid = 0;
@@ -63,5 +106,15 @@ mod tests {
     }
 
     #[test]
-    fn ports_matrix
+    fn port_correct() {
+        let port = get_matrix_port(1000000);
+        match port {
+            Ok(x) => {let port = x;},
+            Err(x) => {
+                println!("{:?}", x);
+                assert!(false);
+            },
+        }
+        assert!(true); 
+    }
 }
