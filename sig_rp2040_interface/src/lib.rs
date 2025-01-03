@@ -2,8 +2,9 @@
 
 use std::io::{Error, ErrorKind};
 use std::result::Result;
+use std::time::Duration;
 
-const VERSION_STATEMENT: &str = "Sig FW LED Matrix Firmware version 1.0";
+const VERSION_STATEMENT: &str = "Sig FW LED Matrix FW V1.0\0\0\0\0\0\0\0";
 
 pub fn get_ports() -> Option<Vec<serialport::SerialPortInfo>> {
     let mut ports = match serialport::available_ports(){
@@ -25,7 +26,7 @@ pub fn get_ports() -> Option<Vec<serialport::SerialPortInfo>> {
     }
 }
 
-pub fn get_matrix_port(baud_rate: u32) -> Result<Box<dyn serialport::SerialPort>, Error> {
+pub fn get_matrix_port(baud_rate: u32, time_out: u64) -> Result<Box<dyn serialport::SerialPort>, Error> {
     let ports = get_ports();
     let port_info;
     match ports {
@@ -41,14 +42,14 @@ pub fn get_matrix_port(baud_rate: u32) -> Result<Box<dyn serialport::SerialPort>
     
     print!("{:?} ", port_info.port_name);
     println!("Test 1");
-    let mut port = serialport::new(port_info.port_name, baud_rate).open()?;
+    let mut port = serialport::new(port_info.port_name, baud_rate).timeout(Duration::from_millis(time_out)).open()?;
     println!("Test 2");
     port.write(&[127])?;
 
     println!("Test 3");
     let mut read_buffer: Vec<u8> = vec![0; 32];
     port.read(&mut read_buffer)?;
-    println!("Test 4");
+    println!("Test 4 {:?}", std::str::from_utf8(&read_buffer));
     match std::str::from_utf8(&read_buffer) {
         Ok(x) => {
             if x == VERSION_STATEMENT {
@@ -107,7 +108,7 @@ mod tests {
 
     #[test]
     fn port_correct() {
-        let port = get_matrix_port(1000000);
+        let port = get_matrix_port(1000000, 10000);
         match port {
             Ok(x) => {let port = x;},
             Err(x) => {
