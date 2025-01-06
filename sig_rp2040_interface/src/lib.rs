@@ -9,7 +9,7 @@ const VERSION_STATEMENT: &str = "Sig FW LED Matrix FW V1.0\0\0\0\0\0\0\0";
 pub struct LedMatrixInterface <'a> {
     pwm_matrix: &'a mut[[u8;9];34],
     scale_matrix: &'a mut[[u8;9];34],
-    led_matrix_port: dyn serialport::SerialPort,
+    led_matrix_port: Box<dyn serialport::SerialPort>,
 }
 
 impl LedMatrixInterface <'_> {
@@ -54,6 +54,21 @@ impl LedMatrixInterface <'_> {
     pub fn write (&mut self) {
         self.write_scale();
         self.write_pwm();
+    }
+    
+    pub fn set_port(&mut self, baud_rate: u32, time_out: u64) -> Result<(), Error> {
+        match get_matrix_port(baud_rate, time_out) {
+            Ok(x) => Ok(self.led_matrix_port = x),
+            Err(x) => Err(x),
+        }
+    }
+
+    pub fn set_port_manual(&mut self, port_name: &str, baud_rate: u32, time_out: u64) -> Result<(), serialport::Error> {
+        let port_result = serialport::new(port_name, baud_rate).timeout(Duration::from_millis(time_out)).open();
+        match port_result {
+            Ok(x) => Ok(self.led_matrix_port = x),
+            Err(x) => Err(x),
+        }
     }
 }
 
