@@ -6,6 +6,57 @@ use std::time::Duration;
 
 const VERSION_STATEMENT: &str = "Sig FW LED Matrix FW V1.0\0\0\0\0\0\0\0";
 
+pub struct LedMatrixInterface <'a> {
+    pwm_matrix: &'a mut[[u8;9];34],
+    scale_matrix: &'a mut[[u8;9];34],
+    led_matrix_port: dyn serialport::SerialPort,
+}
+
+impl LedMatrixInterface <'_> {
+    pub fn set_pwm (&mut self, input_matrix: &[[u8;9];34]) {
+         for i in 0..self.pwm_matrix.len() {
+            for j in 0..self.pwm_matrix[i].len() {
+                self.pwm_matrix[i][j] = input_matrix[i][j];
+            }
+         }
+    }
+
+    pub fn set_scale (&mut self, input_matrix: &[[u8;9];34]) {
+         for i in 0..self.scale_matrix.len() {
+            for j in 0..self.scale_matrix[i].len() {
+                self.scale_matrix[i][j] = input_matrix[i][j];
+            }
+         }
+    }
+
+    pub fn write_pwm (&mut self) {
+        let mut write_buffer = Vec::<u8>::with_capacity(307); 
+        write_buffer.extend_from_slice(&[b'w']);
+        for i in 0..self.pwm_matrix.len() {
+            for j in 0..self.pwm_matrix[i].len() {
+                write_buffer.extend_from_slice(&[self.pwm_matrix[i][j]]);
+            }
+        }
+        let _ = self.led_matrix_port.write_all(write_buffer.as_slice());
+    }
+
+    pub fn write_scale (&mut self) {
+        let mut write_buffer = Vec::<u8>::with_capacity(307); 
+        write_buffer.extend_from_slice(&[b's']);
+        for i in 0..self.scale_matrix.len() {
+            for j in 0..self.scale_matrix[i].len() {
+                write_buffer.extend_from_slice(&[self.pwm_matrix[i][j]]);
+            }
+        }
+        let _ = self.led_matrix_port.write_all(write_buffer.as_slice());
+    }
+
+    pub fn write (&mut self) {
+        self.write_scale();
+        self.write_pwm();
+    }
+}
+
 pub fn get_ports() -> Option<Vec<serialport::SerialPortInfo>> {
     let mut ports = match serialport::available_ports(){
         Ok(x) => x,
@@ -40,22 +91,17 @@ pub fn get_matrix_port(baud_rate: u32, time_out: u64) -> Result<Box<dyn serialpo
         None => return Err(Error::new(ErrorKind::NotFound, "No ACM or Com ports found!")),
     }
     
-    print!("{:?} ", port_info.port_name);
-    println!("Test 1");
     let mut port = serialport::new(port_info.port_name, baud_rate).timeout(Duration::from_millis(time_out)).open()?;
-    println!("Test 2");
     port.write(&[127])?;
 
-    println!("Test 3");
     let mut read_buffer: Vec<u8> = vec![0; 32];
     port.read(&mut read_buffer)?;
-    println!("Test 4 {:?}", std::str::from_utf8(&read_buffer));
     match std::str::from_utf8(&read_buffer) {
         Ok(x) => {
             if x == VERSION_STATEMENT {
                 return Ok(port);
             } else {
-                return Err(Error::new(ErrorKind::InvalidInput, "Incorrect version statement from port!"));
+                return Err(Error::new(ErrorKind::InvalidInput, format!("Incorrect version statement from port!: {:?}", read_buffer.as_slice())));
             }
         }
         Err(_) => {
@@ -110,7 +156,7 @@ mod tests {
     fn port_correct() {
         let port = get_matrix_port(1000000, 10000);
         match port {
-            Ok(x) => {let port = x;},
+            Ok(x) => {println!("{:?}",x);},
             Err(x) => {
                 println!("{:?}", x);
                 assert!(false);

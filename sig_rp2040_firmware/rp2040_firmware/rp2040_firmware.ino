@@ -16,7 +16,7 @@
 //    *** Constants ***
 
 // The version information statement
-const String versionStatement = "Sig FW LED Matrix Firmware version 1.0";
+const String versionStatement = "Sig FW LED Matrix FW V1.0";
 
 // The baud rate of the rp2040 usb serial.
 const int serialBaud = 1000000;
@@ -406,6 +406,6 @@ void loop1() {
       break;
     // Print a known statement to confirm this firmware.
     case 127:
-      Serial.println(versionStatement);
+      Serial.print(versionStatement);
   }
 }
