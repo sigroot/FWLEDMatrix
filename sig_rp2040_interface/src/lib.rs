@@ -37,7 +37,10 @@ impl LedMatrixInterface <'_> {
                 write_buffer.extend_from_slice(&[self.pwm_matrix[i][j]]);
             }
         }
-        let _ = self.led_matrix_port.write_all(write_buffer.as_slice());
+        match self.led_matrix_port.write_all(write_buffer.as_slice()) {
+            Ok(_) => (),
+            Err(_) => self.flush_operation(307),
+        }
     }
 
     pub fn write_scale (&mut self) {
@@ -48,7 +51,10 @@ impl LedMatrixInterface <'_> {
                 write_buffer.extend_from_slice(&[self.pwm_matrix[i][j]]);
             }
         }
-        let _ = self.led_matrix_port.write_all(write_buffer.as_slice());
+        match self.led_matrix_port.write_all(write_buffer.as_slice()) {
+            Ok(_) => (),
+            Err(_) => self.flush_operation(307),
+        }
     }
 
     pub fn write (&mut self) {
@@ -68,6 +74,16 @@ impl LedMatrixInterface <'_> {
         match port_result {
             Ok(x) => Ok(self.led_matrix_port = x),
             Err(x) => Err(x),
+        }
+    }
+
+    pub fn flush_operation (&mut self, bytes: u32) {
+        let mut current_byte = 0;
+        while current_byte < bytes {
+            match self.led_matrix_port.write(&[0]) {
+                Ok(x) => current_byte += x as u32,
+                Err(_) => continue,
+            }
         }
     }
 }

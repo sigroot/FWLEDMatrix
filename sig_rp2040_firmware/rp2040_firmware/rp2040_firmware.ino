@@ -316,6 +316,9 @@ void loop1() {
   uint8_t fps;
   // Run command. Often can be interrupted.
   switch(commandCode) {
+    // No op
+    case 0:
+      break;
     // Run the startup animation.
     case 'a':
       startupAnimation();
