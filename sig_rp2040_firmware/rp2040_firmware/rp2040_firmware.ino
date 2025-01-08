@@ -404,7 +404,7 @@ void loop1() {
       if (rp2040.fifo.available()) {
         writeAll(rp2040.fifo.pop());
       } else {
-        Serial.println("ERROR: too few arguments for writeAllScale");
+        Serial.println("ERROR: too few arguments for writeAllPWM");
       }
       break;
     // Print a known statement to confirm this firmware.

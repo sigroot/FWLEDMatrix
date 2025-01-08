@@ -22,7 +22,7 @@ impl LedMatrixInterface {
         }
     }
 
-    pub fn new_manual (port_name: &str, baud_rate: u32, timeout: u64) -> Self{
+    pub fn new_manual (port_name: &str, baud_rate: u32, timeout: u64) -> Self {
         Self {
             pwm_matrix: Box::new([[0;9];34]),
             scale_matrix: Box::new([[255;9];34]),
@@ -34,11 +34,11 @@ impl LedMatrixInterface {
     }
 
     pub fn set_pwm (&mut self, input_matrix: &[[u8;9];34]) {
-         for i in 0..self.pwm_matrix.len() {
+        for i in 0..self.pwm_matrix.len() {
             for j in 0..self.pwm_matrix[i].len() {
                 self.pwm_matrix[i][j] = input_matrix[i][j];
             }
-         }
+        }
     }
 
     pub fn set_scale (&mut self, input_matrix: &[[u8;9];34]) {
@@ -51,7 +51,7 @@ impl LedMatrixInterface {
 
     pub fn write_pwm (&mut self) {
         let mut write_buffer = Vec::<u8>::with_capacity(307); 
-        write_buffer.extend_from_slice(&[b'w']);
+        write_buffer.extend_from_slice(&[b'm']);
         for i in 0..self.pwm_matrix.len() {
             for j in 0..self.pwm_matrix[i].len() {
                 write_buffer.extend_from_slice(&[self.pwm_matrix[i][j]]);
@@ -65,7 +65,7 @@ impl LedMatrixInterface {
 
     pub fn write_scale (&mut self) {
         let mut write_buffer = Vec::<u8>::with_capacity(307); 
-        write_buffer.extend_from_slice(&[b's']);
+        write_buffer.extend_from_slice(&[b'n']);
         for i in 0..self.scale_matrix.len() {
             for j in 0..self.scale_matrix[i].len() {
                 write_buffer.extend_from_slice(&[self.pwm_matrix[i][j]]);
