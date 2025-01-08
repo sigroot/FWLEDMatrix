@@ -6,13 +6,33 @@ use std::time::Duration;
 
 const VERSION_STATEMENT: &str = "Sig FW LED Matrix FW V1.0\0\0\0\0\0\0\0";
 
-pub struct LedMatrixInterface <'a> {
-    pwm_matrix: &'a mut[[u8;9];34],
-    scale_matrix: &'a mut[[u8;9];34],
+pub struct LedMatrixInterface {
+    pwm_matrix: Box<[[u8;9];34]>,
+    scale_matrix: Box<[[u8;9];34]>,
     led_matrix_port: Box<dyn serialport::SerialPort>,
 }
 
-impl LedMatrixInterface <'_> {
+impl LedMatrixInterface {
+    pub fn new (baud_rate: u32, timeout:u64) -> Self {
+        Self {
+            pwm_matrix: Box::new([[0;9];34]),
+            scale_matrix: Box::new([[255;9];34]),
+            led_matrix_port: get_matrix_port(baud_rate, timeout)
+                .expect("No ports found"),
+        }
+    }
+
+    pub fn new_manual (port_name: &str, baud_rate: u32, timeout: u64) -> Self{
+        Self {
+            pwm_matrix: Box::new([[0;9];34]),
+            scale_matrix: Box::new([[255;9];34]),
+            led_matrix_port: serialport::new(port_name, baud_rate)
+                .timeout(Duration::from_millis(timeout))
+                .open()
+                .expect("Unable to find port"),
+        }
+    }
+
     pub fn set_pwm (&mut self, input_matrix: &[[u8;9];34]) {
          for i in 0..self.pwm_matrix.len() {
             for j in 0..self.pwm_matrix[i].len() {
@@ -62,15 +82,15 @@ impl LedMatrixInterface <'_> {
         self.write_pwm();
     }
     
-    pub fn set_port(&mut self, baud_rate: u32, time_out: u64) -> Result<(), Error> {
-        match get_matrix_port(baud_rate, time_out) {
+    pub fn set_port(&mut self, baud_rate: u32, timeout: u64) -> Result<(), Error> {
+        match get_matrix_port(baud_rate, timeout) {
             Ok(x) => Ok(self.led_matrix_port = x),
             Err(x) => Err(x),
         }
     }
 
-    pub fn set_port_manual(&mut self, port_name: &str, baud_rate: u32, time_out: u64) -> Result<(), serialport::Error> {
-        let port_result = serialport::new(port_name, baud_rate).timeout(Duration::from_millis(time_out)).open();
+    pub fn set_port_manual(&mut self, port_name: &str, baud_rate: u32, timeout: u64) -> Result<(), serialport::Error> {
+        let port_result = serialport::new(port_name, baud_rate).timeout(Duration::from_millis(timeout)).open();
         match port_result {
             Ok(x) => Ok(self.led_matrix_port = x),
             Err(x) => Err(x),
@@ -108,7 +128,7 @@ pub fn get_ports() -> Option<Vec<serialport::SerialPortInfo>> {
     }
 }
 
-pub fn get_matrix_port(baud_rate: u32, time_out: u64) -> Result<Box<dyn serialport::SerialPort>, Error> {
+pub fn get_matrix_port(baud_rate: u32, timeout: u64) -> Result<Box<dyn serialport::SerialPort>, Error> {
     let ports = get_ports();
     let port_info;
     match ports {
@@ -122,7 +142,7 @@ pub fn get_matrix_port(baud_rate: u32, time_out: u64) -> Result<Box<dyn serialpo
         None => return Err(Error::new(ErrorKind::NotFound, "No ACM or Com ports found!")),
     }
     
-    let mut port = serialport::new(port_info.port_name, baud_rate).timeout(Duration::from_millis(time_out)).open()?;
+    let mut port = serialport::new(port_info.port_name, baud_rate).timeout(Duration::from_millis(timeout)).open()?;
     port.write(&[127])?;
 
     let mut read_buffer: Vec<u8> = vec![0; 32];
